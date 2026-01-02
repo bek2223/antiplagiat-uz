@@ -8,7 +8,7 @@ import time
 # Sahifa sozlamalari
 st.set_page_config(page_title="Antiplagiat Pro AI", page_icon="🔍", layout="wide")
 
-# CSS xatoligi to'liq tuzatildi
+# CSS dizayni (unsafe_allow_html ishlatildi)
 st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
@@ -16,9 +16,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🔍 Professional Antiplagiat Platformasi")
+st.title("🔍 Shaffof Antiplagiat Platformasi")
 
 # --- SOZLAMALAR ---
+# Serper API kalitingiz
 SERPER_API_KEY = "38c45e021308ac05f6c824fdab463fd816949f79" 
 
 def read_docx(file):
@@ -47,27 +48,24 @@ def search_internet(query):
         return response.json().get('organic', [])
     except: return []
 
-# --- ASOSIY INTERFEYS ---
+# --- INTERFEYS ---
 uploaded_file = st.file_uploader("Hujjatni yuklang (PDF yoki DOCX)", type=['docx', 'pdf'])
 
 if uploaded_file:
-    if uploaded_file.name.endswith('.docx'):
-        raw_text = read_docx(uploaded_file)
-    else:
-        raw_text = read_pdf(uploaded_file)
+    # Faylni o'qish
+    raw_text = read_docx(uploaded_file) if uploaded_file.name.endswith('.docx') else read_pdf(uploaded_file)
     
-    if st.button("🚀 To'liq tahlilni boshlash"):
+    st.info(f"Fayl o'qildi: {len(raw_text.split())} ta so'z mavjud.")
+
+    if st.button("🚀 Tahlilni internetda boshlash"):
         chunks = list(get_chunks(raw_text, 40))
-        total_chunks = min(len(chunks), 10)
+        total_chunks = min(len(chunks), 10) # Dastlabki 10 bo'lakni tekshirish
         
         progress_bar = st.progress(0)
-        status_text = st.empty()
-        
         plagiarized_count = 0
         found_sources = []
 
         for i in range(total_chunks):
-            status_text.text(f"Tahlil qilinmoqda: {i+1}/{total_chunks} bo'lak...")
             results = search_internet(chunks[i])
             if results:
                 plagiarized_count += 1
@@ -75,32 +73,24 @@ if uploaded_file:
             progress_bar.progress((i + 1) / total_chunks)
             time.sleep(0.1)
 
+        # Foizni hisoblash
         plagiarism_percent = int((plagiarized_count / total_chunks) * 100)
         st.divider()
         
-        # --- NATIJALAR ---
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader(f"Natija: {plagiarism_percent}%")
+            st.header(f"Natija: {plagiarism_percent}%")
             if plagiarism_percent > 30:
-                st.error("Diqqat! Yuqori darajadagi o'xshashlik aniqlandi.")
+                st.error("Diqqat! O'xshashlik yuqori.")
             else:
                 st.success("Matn original deb topildi.")
-            
-            # PDF xatoligi sababli hozircha matnli hisobotni ko'rsatamiz
-            st.info("Hisobot yaratildi. Quyida manbalarni ko'rishingiz mumkin.")
         
         with c2:
             st.subheader("Topilgan manbalar")
             unique_sources = {s['link']: s for s in found_sources}.values()
-            if unique_sources:
-                for source in list(unique_sources)[:5]:
-                    st.markdown(f"🔗 [{source['title']}]({source['link']})")
-                    st.caption(f"Parcha: {source.get('snippet', '')[:100]}...")
-            else:
-                st.write("Internetdan hech qanday ko'chirma topilmadi.")
+            for source in list(unique_sources)[:5]:
+                st.markdown(f"🔗 [{source['title']}]({source['link']})")
 
-# --- SIDEBAR ---
-st.sidebar.title("🛠 Tizim Holati")
-st.sidebar.write("Kodirovka: **UTF-8 (O'zbek tili qo'llab-quvvatlanadi)**")
-st.sidebar.success("Xatoliklar bartaraf etildi.")
+st.sidebar.title("🛠 Tizim holati")
+st.sidebar.success("Internetga ulangan")
+st.sidebar.write("GitHub Repository: **antiplagiat-pro**")
